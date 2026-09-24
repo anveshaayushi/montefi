@@ -20,3 +20,8 @@ RISK_FREE_RATE   = float(os.environ.get("RISK_FREE_RATE", "0.05"))
 SIMULATION_COUNT = int(os.environ.get("SIMULATION_COUNT", "1000"))
 
 print(f"[config] KEY={'SET ✓' if GEMINI_API_KEY else 'NOT SET'}")
+DB_NAME     = os.environ.get("DB_NAME", "montefi")
+DB_USER     = os.environ.get("DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+DB_HOST     = os.environ.get("DB_HOST", "localhost")
+DB_PORT     = int(os.environ.get("DB_PORT", "5432"))
