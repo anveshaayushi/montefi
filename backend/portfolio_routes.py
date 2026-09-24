@@ -3,7 +3,10 @@ import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from database import db, Portfolio, Holding, SimulationResult
+from database import db
+from portfolio import Portfolio
+from holding import Holding
+from simulation_result import SimulationResult
 
 router = APIRouter(prefix="/portfolios", tags=["Portfolios"])
 
