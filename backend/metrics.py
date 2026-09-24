@@ -34,12 +34,9 @@ def calculate_var(final_values: np.ndarray, initial_investment: float) -> Dict:
 
 
 def calculate_max_drawdown(simulation_paths: np.ndarray) -> float:
-    drawdowns = []
-    for path in simulation_paths:
-        running_max = np.maximum.accumulate(path)
-        dd = (path - running_max) / running_max
-        drawdowns.append(float(np.min(dd)))
-    return round(float(np.median(drawdowns)) * 100, 2)
+    running_max = np.maximum.accumulate(simulation_paths, axis=1)
+    drawdowns   = (simulation_paths - running_max) / running_max
+    return round(float(np.median(np.min(drawdowns, axis=1))) * 100, 2)
 
 
 def calculate_beta(portfolio_daily_returns: np.ndarray) -> Optional[float]:

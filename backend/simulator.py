@@ -1,4 +1,4 @@
-# simulator.py — fixed for multi-ticker yfinance download
+# simulator.py — vectorized Monte Carlo (fixed for multi-ticker yfinance download)
 import time
 import numpy as np
 from typing import List, Dict
@@ -42,18 +42,16 @@ def run_simulation(tickers: List[str], weights: List[float],
 
     print(f"[simulator] mean_returns: {mean_returns.shape}, cov: {cov_matrix.shape}")
 
-    # ── Stage 2: Simulation ──────────────────────────────────────────────────
-    sim_start    = time.perf_counter()
-    final_values = np.zeros(n)
-    sim_paths    = np.zeros((n, days))
+    # ── Stage 2: Simulation (VECTORIZED) ────────────────────────────────────
+    sim_start = time.perf_counter()
 
-    for i in range(n):
-        sim_daily       = np.random.multivariate_normal(mean_returns, cov_matrix, days)
-        portfolio_daily = sim_daily @ w
-        portfolio_daily = np.clip(portfolio_daily, -0.5, 0.5)  # guard against overflow
-        path            = initial_investment * np.cumprod(1 + portfolio_daily)
-        sim_paths[i]    = path
-        final_values[i] = path[-1]
+    L = np.linalg.cholesky(cov_matrix)                            # (n_tickers, n_tickers)
+    Z = np.random.standard_normal((n, days, len(mean_returns)))   # (n, days, n_tickers)
+    sim_daily = mean_returns + Z @ L.T                             # (n, days, n_tickers)
+
+    portfolio_daily = np.clip(sim_daily @ w, -0.5, 0.5)            # (n, days)
+    sim_paths       = initial_investment * np.cumprod(1 + portfolio_daily, axis=1)  # (n, days)
+    final_values    = sim_paths[:, -1]                             # (n,)
 
     sim_ms = round((time.perf_counter() - sim_start) * 1000, 2)
     print(f"[simulator] Simulation done in {sim_ms}ms")
