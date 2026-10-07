@@ -3,12 +3,14 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from optimizer_routes import router as optimizer_router
+from backtest_routes import router as backtest_router
 
 from database import connect_db
 from stock_routes import router as stock_router
 from portfolio_routes import router as portfolio_router
 from simulation_routes import router as simulation_router
 from chat_routes import router as chat_router
+from backtest_routes import router as backtest_router
 
 app = FastAPI(title="MonteFi API", version="2.0.0")
 
@@ -35,6 +37,7 @@ app.include_router(stock_router)
 app.include_router(portfolio_router)
 app.include_router(simulation_router)
 app.include_router(chat_router)
+app.include_router(backtest_router)
 app.include_router(optimizer_router)
 @app.get("/")
 def home():
