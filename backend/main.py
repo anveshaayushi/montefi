@@ -2,6 +2,7 @@
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from optimizer_routes import router as optimizer_router
 
 from database import connect_db
 from stock_routes import router as stock_router
@@ -34,7 +35,7 @@ app.include_router(stock_router)
 app.include_router(portfolio_router)
 app.include_router(simulation_router)
 app.include_router(chat_router)
-
+app.include_router(optimizer_router)
 @app.get("/")
 def home():
     return {
