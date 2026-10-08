@@ -15,6 +15,7 @@ def connect_db():
     from portfolio import Portfolio
     from holding import Holding
     from simulation_result import SimulationResult
+    from document_chunk import DocumentChunk
     db.connect(reuse_if_open=True)
-    db.create_tables([Portfolio, Holding, SimulationResult], safe=True)
+    db.create_tables([Portfolio, Holding, SimulationResult, DocumentChunk], safe=True)
     print(f"[DB] Connected to Postgres: {DB_NAME}@{DB_HOST}:{DB_PORT}")
