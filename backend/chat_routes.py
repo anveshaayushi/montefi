@@ -196,7 +196,7 @@ Keep responses to 3-5 sentences. When citing news, always mention the source.
 {news_context}"""
 
             llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
+                model="gemini-3.8-flash",
                 google_api_key=GEMINI_API_KEY,
                 temperature=0.4,
                 max_output_tokens=400,

@@ -1,6 +1,7 @@
 # ai_analyst.py — LangChain + Gemini, completely isolated
 import time
 from typing import List, Optional, Dict
+
 from config import GEMINI_API_KEY
 
 
@@ -13,7 +14,7 @@ def generate_portfolio_analysis(metrics: Dict, tickers: List[str],
 
     t0 = time.perf_counter()
     try:
-        from langchain.prompts import PromptTemplate
+        from langchain_core.prompts import PromptTemplate
         from langchain_google_genai import ChatGoogleGenerativeAI
         from langchain_core.output_parsers import StrOutputParser
 
@@ -37,16 +38,19 @@ Assess: is Sharpe strong or weak? What does VaR mean practically? Is beta high o
 
         prompt = PromptTemplate(
             input_variables=[
-                "tickers","weights","initial_investment","years",
-                "expected_value","expected_return_pct","sharpe_ratio",
-                "var_95_pct","var_99_pct","max_drawdown_pct","beta",
-                "prob_profit_pct","p10","p50","p90",
+                "tickers", "weights", "initial_investment", "years",
+                "expected_value", "expected_return_pct", "sharpe_ratio",
+                "var_95_pct", "var_99_pct", "max_drawdown_pct", "beta",
+                "prob_profit_pct", "p10", "p50", "p90",
             ],
             template=template,
         )
-        llm   = ChatGoogleGenerativeAI(model="gemini-1.5-flash",
-                                        google_api_key=GEMINI_API_KEY,
-                                        temperature=0.3)
+
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-3.8-flash",
+            google_api_key=GEMINI_API_KEY,
+            temperature=0.3,
+        )
         chain = prompt | llm | StrOutputParser()
 
         ci  = metrics.get("confidence_intervals", {})
