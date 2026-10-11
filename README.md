@@ -1,75 +1,115 @@
 # MonteFi
 
-**MonteFi** is a full-stack quantitative portfolio analytics platform that simulates future portfolio performance using Monte Carlo methods. Users can build a weighted stock portfolio, fetch real-time and historical pricing data, and run large-scale simulations to evaluate expected returns, risk, and best/worst-case outcomes over a chosen time horizon — backed by an AI analyst that explains the numbers in plain English.
+A quantitative portfolio analytics platform. Build a portfolio, run a Monte Carlo simulation on it, get risk metrics, optimize the weights, backtest the model, and ask questions about uploaded filings with RAG.
 
-## What It Does
+**Stack:** FastAPI · NumPy / Pandas / SciPy · PostgreSQL (Docker) · Peewee ORM · LangChain + Gemini · React (Create React App)
 
-- **Portfolio construction** — add tickers and assign weights to build a custom portfolio
-- **Historical data ingestion** — pulls ~15–20 years of daily stock data via `yfinance`
-- **Monte Carlo simulation** — generates thousands of simulated future market scenarios using a multivariate normal model derived from historical return statistics and correlations
-- **Risk & performance metrics**:
-  - Sharpe Ratio
-  - Value at Risk (95% / 99%)
-  - Maximum Drawdown
-  - Beta vs. S&P 500 (SPY)
-  - Confidence intervals on projected returns
-  - Probability of profit
-- **AI portfolio analyst** — LangChain + Gemini generate a natural-language breakdown of simulation results and portfolio risk
-- **Persistence** — saved portfolios and simulation runs stored via Peewee ORM (SQLite)
-- **Performance tracking** — per-stage latency tracking across the simulation pipeline
-- **Interactive frontend** — dark/light mode, real-time charts, and smooth animated transitions for exploring simulation outcomes
+---
 
-## Tech Stack
+## Features
 
-**Backend**
-- FastAPI
-- NumPy, Pandas
-- Peewee ORM (SQLite)
-- yfinance (market data)
-- LangChain + Google Gemini (AI analysis)
+- **Monte Carlo simulation**: 1,000+ correlated portfolio paths per run. Correlation comes from a Cholesky decomposition of the covariance matrix, and all draws are generated in one vectorized NumPy call (simulation stage 45.6 ms → 17.1 ms, about 2.7x faster than the loop version).
+- **Risk metrics**: Sharpe ratio, VaR (95% / 99%), median max drawdown, beta vs. SPY, p10 / p50 / p90 outcome bands.
+- **Portfolio optimizer**: mean-variance optimization (max Sharpe or min variance) with SciPy `trust-constr` and long-only constraints.
+- **Backtesting**: train/test split. Simulates forward from the training period and checks where the realized outcome falls in the simulated distribution (p10–p90 band).
+- **RAG over documents**: paragraph chunking with overlap, Gemini embeddings, cosine-similarity retrieval in NumPy, answers grounded in the retrieved text with source citations.
+- **AI risk analysis**: plain-English summary of the simulation metrics, written by Gemini via LangChain.
+- **Chat assistant**: LangChain + Gemini, with news lookup and a rule-based fallback when the LLM is unavailable.
+- **Save / load portfolios** in PostgreSQL.
 
-**Frontend**
-- React (Vite)
-- Tailwind CSS
-- Recharts (data visualization)
-- Framer Motion (animations)
-
-## How It Works
-
-1. The user selects tickers and assigns portfolio weights.
-2. The backend fetches historical daily price data for all tickers simultaneously via yfinance.
-3. Historical returns, volatilities, and cross-asset correlations are computed.
-4. A multivariate normal model uses these statistics to generate thousands of simulated future price paths over the chosen horizon.
-5. Risk and performance metrics are computed from the simulated outcomes.
-6. Results are visualized on the frontend, and an LLM-generated summary explains the portfolio's risk/return profile in plain language.
-
-## Project Structure
+## Project structure
 
 ```
 montefi/
-├── backend/      # FastAPI app: data ingestion, simulation engine, metrics, AI analyst
-├── frontend/     # React + Vite app: portfolio builder and results dashboard
-├── requirements.txt
-└── README.md
+├── backend/
+│   ├── main.py              # FastAPI app, CORS, router registration
+│   ├── config.py            # loads backend/.env
+│   ├── database.py          # PostgreSQL connection + table creation
+│   ├── simulator.py         # vectorized Monte Carlo
+│   ├── metrics.py           # Sharpe, VaR, drawdown, beta
+│   ├── optimizer.py         # mean-variance optimizer
+│   ├── backtest.py          # train/test backtest
+│   ├── rag.py               # chunking, embeddings, retrieval, grounded answers
+│   ├── ai_analyst.py        # Gemini risk summary
+│   ├── *_routes.py          # API routers
+│   ├── portfolio.py, holding.py, simulation_result.py, document_chunk.py   # Peewee models
+│   └── requirements.txt
+└── frontend/                # React (Create React App)
 ```
 
-## Getting Started
+## Setup
 
-### Backend
+### Prerequisites
+Python 3.11+, Node.js 18+, Docker Desktop, and a [Gemini API key](https://aistudio.google.com/).
+
+### 1. Start PostgreSQL (Docker)
+Postgres runs in a container on host port **5433** (not 5432, to avoid clashing with a native Postgres install).
+
+```bash
+docker run --name montefi-postgres -e POSTGRES_PASSWORD=<your_password> -e POSTGRES_DB=<your_db_name> -p 5433:5432 -d postgres
+```
+
+After a reboot, start it again with `docker start montefi-postgres` (Docker Desktop must be running).
+
+### 2. Backend
+
 ```bash
 cd backend
-pip install -r ../requirements.txt
-uvicorn main:app --reload
+python -m venv venv
+venv\Scripts\activate          # Windows   (macOS/Linux: source venv/bin/activate)
+pip install -r requirements.txt
 ```
 
-### Frontend
+Create `backend/.env`:
+
+```
+GEMINI_API_KEY=your_key_here
+DB_NAME=<your_db_name>
+DB_USER=postgres
+DB_PASSWORD=<your_password>
+DB_HOST=127.0.0.1
+DB_PORT=5433
+```
+
+Run it:
+
+```bash
+python main.py
+```
+
+Interactive API docs (Swagger) are at `http://localhost:8000/docs`. Tables are created automatically on startup.
+
+### 3. Frontend
+
 ```bash
 cd frontend
 npm install
-npm run dev
+npm start
 ```
 
-## Notes
+The app opens at `http://localhost:3000`. The backend allows CORS from that origin.
 
-- Built as a deep-dive into quantitative finance concepts (Monte Carlo simulation, risk metrics) paired with a modern full-stack architecture.
-- Designed as a resume and interview project showcasing backend system design, statistical modeling, and AI integration.
+## Key endpoints
+
+Full list and request schemas are in Swagger (`/docs`).
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/portfolios/{id}/simulate` | Run Monte Carlo, metrics and AI analysis for a saved portfolio |
+| POST | `/optimize` | Optimal weights. Body: `{tickers, objective}` |
+| POST | `/backtest` | Train/test backtest. Body: `{tickers, weights, test_years}` |
+| POST | `/documents/ingest` | Chunk, embed and store a document |
+| POST | `/documents/ask` | Ask a question, answered from stored documents with sources |
+| POST | `/chat` | Chat assistant |
+
+## Notes and limitations
+
+- The AI analysis call to Gemini dominates `/simulate` latency (tens of seconds). The numerical pipeline itself takes milliseconds.
+- Optimizer and backtest results are in-sample / historical and are not investment advice.
+- Embeddings are stored as JSON in Postgres and searched with NumPy. This is fine for small document sets; a vector index (e.g. pgvector) would be the next step at scale.
+
+## Roadmap
+
+- LangGraph-based multi-step analyst agent
+- Full `docker-compose` deployment (backend + frontend + Postgres)
+- Auth, automated tests, and splitting the large frontend component
